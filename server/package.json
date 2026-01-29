@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "test:db": "tsx src/index.ts",
-    "dev": "tsx watch src/index.ts"
+    "test:service": "tsx src/test-service.ts",
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "test:recovery": "tsx src/test-recovery.ts"
   },
   "keywords": [],
   "author": "",
