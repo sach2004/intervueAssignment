@@ -14,6 +14,21 @@ import ChatPopup from "./ChatPopup";
 
 const SERVER_URL = "http://localhost:3001";
 
+const ChatIcon = () => (
+  <svg
+    width="33"
+    height="33"
+    viewBox="0 0 33 33"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M27.625 0H4.875C3.58207 0 2.34209 0.513615 1.42785 1.42785C0.513615 2.34209 0 3.58207 0 4.875V21.125C0 22.4179 0.513615 23.6579 1.42785 24.5721C2.34209 25.4864 3.58207 26 4.875 26H23.7087L29.7213 32.0288C29.8731 32.1794 30.0532 32.2985 30.2512 32.3794C30.4491 32.4603 30.6611 32.5012 30.875 32.5C31.0882 32.5055 31.2996 32.461 31.4925 32.37C31.7893 32.2481 32.0433 32.0411 32.2226 31.775C32.4019 31.509 32.4984 31.1958 32.5 30.875V4.875C32.5 3.58207 31.9864 2.34209 31.0721 1.42785C30.1579 0.513615 28.9179 0 27.625 0ZM29.25 26.9588L25.5287 23.2213C25.3769 23.0706 25.1968 22.9515 24.9988 22.8706C24.8009 22.7898 24.5889 22.7488 24.375 22.75H4.875C4.44402 22.75 4.0307 22.5788 3.72595 22.274C3.42121 21.9693 3.25 21.556 3.25 21.125V4.875C3.25 4.44402 3.42121 4.0307 3.72595 3.72595C4.0307 3.42121 4.44402 3.25 4.875 3.25H27.625C28.056 3.25 28.4693 3.42121 28.774 3.72595C29.0788 4.0307 29.25 4.44402 29.25 4.875V26.9588Z"
+      fill="white"
+    />
+  </svg>
+);
+
 const PollIcon = () => (
   <svg
     width="15"
@@ -41,6 +56,8 @@ export default function Student() {
   const [error, setError] = useState("");
   const [voteSubmitted, setVoteSubmitted] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+
+  const isUrgent = remainingTime <= 15;
 
   useEffect(() => {
     const savedName = sessionStorage.getItem("studentName");
@@ -224,73 +241,124 @@ export default function Student() {
   }
 
   if (hasVoted || currentPoll.status === "completed") {
+    const resultsNormalized = currentPoll.options.map((opt: string) => {
+      const percentage = Number(currentPoll.results?.[opt] || 0);
+      return { option: opt, percentage };
+    });
+
     return (
       <>
-        <div className="min-h-screen bg-white flex items-start justify-center p-8">
-          <div className="max-w-3xl w-full mt-8">
-            <div className="flex items-center justify-center mb-8">
-              <div className="bg-[#7765DA] text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2">
-                <PollIcon />
-                <span>Intervue Poll</span>
-              </div>
-            </div>
+        <div className="min-h-screen bg-white">
+          <div className="mx-auto max-w-[1100px] px-8 pt-14 pb-10 min-h-screen flex flex-col">
+            <div className="flex-1 flex items-center justify-center">
+              <div className="w-full max-w-[820px]">
+                <div className="flex items-center gap-4 mb-6">
+                  <h2 className="text-4xl font-bold text-black">Question 1</h2>
 
-            <div className="flex items-center gap-4 mb-6">
-              <h2 className="text-3xl font-bold text-black">Question 1</h2>
-              <div className="flex items-center gap-2 text-red-600">
-                <span className="text-xl">⏱️</span>
-                <span className="font-bold text-xl">00:00</span>
-              </div>
-            </div>
-
-            <div className="bg-[#6E6E6E] text-white p-5 rounded-2xl mb-8 text-lg">
-              {currentPoll.question}
-            </div>
-
-            <div className="space-y-4 mb-10">
-              {currentPoll.options.map((option, index) => {
-                const percentage = currentPoll.results[option] || 0;
-                return (
-                  <div key={option} className="flex items-center gap-4">
-                    <div className="flex items-center justify-center w-10 h-10 bg-[#7765DA] text-white rounded-full font-bold text-base flex-shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 bg-white border border-[#E0E0E0] rounded-2xl p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-semibold text-black text-base">
-                          {option}
-                        </span>
-                        <span className="text-black font-bold text-base">
-                          {percentage}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-[#F2F2F2] rounded-full h-3">
-                        <div
-                          className="bg-[#7765DA] h-full rounded-full transition-all duration-500"
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
+                  <div className="flex items-center gap-2 text-black">
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M12 8V12L14.5 13.5"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <span className="font-bold text-xl">00:00</span>
                   </div>
-                );
-              })}
-            </div>
+                </div>
 
-            <div className="text-center text-black text-lg font-semibold">
-              Wait for the teacher to ask a new question..
+                <div
+                  className="rounded-2xl overflow-hidden border-2"
+                  style={{ borderColor: "#7765DA" }}
+                >
+                  <div
+                    className="px-6 py-4 text-white text-lg font-semibold"
+                    style={{
+                      background:
+                        "linear-gradient(90deg, #373737 0%, #6E6E6E 100%)",
+                    }}
+                  >
+                    {currentPoll.question}
+                  </div>
+
+                  <div className="bg-white p-6 space-y-4">
+                    {resultsNormalized.map((row, index) => {
+                      const textWhite = row.percentage >= 45;
+                      const barWidth =
+                        row.percentage <= 0
+                          ? "0%"
+                          : `${Math.max(row.percentage, 12)}%`;
+
+                      return (
+                        <div
+                          key={row.option}
+                          className="flex items-center gap-4"
+                        >
+                          <div className="relative w-full h-[64px] rounded-xl overflow-hidden border border-[#E6E6E6] bg-[#F2F2F2]">
+                            {row.percentage > 0 && (
+                              <div
+                                className="absolute left-0 top-0 h-full rounded-xl"
+                                style={{
+                                  width: barWidth,
+                                  background: "#7765DA",
+                                }}
+                              />
+                            )}
+
+                            <div className="relative z-10 h-full px-4 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center font-bold text-sm text-[#7765DA]">
+                                  {index + 1}
+                                </div>
+                                <span
+                                  className={`text-lg font-semibold ${
+                                    textWhite ? "text-white" : "text-black"
+                                  }`}
+                                >
+                                  {row.option}
+                                </span>
+                              </div>
+
+                              <div className="text-black font-bold text-lg pr-2">
+                                {row.percentage}%
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-14 text-center text-black text-3xl font-bold">
+                  Wait for the teacher to ask a new question..
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
         <button
           onClick={() => setChatOpen(!chatOpen)}
-          style={{
-            background:
-              "linear-gradient(90deg, #7765DA 0%, #5767D0 50%, #4F0DCE 100%)",
-          }}
-          className="fixed bottom-8 right-8 w-16 h-16 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl z-40 hover:opacity-90 transition-all"
+          style={{ background: "#5767D0" }}
+          className="fixed bottom-8 right-8 w-16 h-16 text-white rounded-full shadow-2xl flex items-center justify-center z-40 hover:opacity-90 transition-all"
         >
-          💬
+          <ChatIcon />
         </button>
 
         <ChatPopup
@@ -305,71 +373,106 @@ export default function Student() {
 
   return (
     <>
-      <div className="min-h-screen bg-white flex items-start justify-center p-8">
-        <div className="max-w-3xl w-full mt-8">
-          <div className="flex items-center justify-center mb-8">
-            <div className="bg-[#7765DA] text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2">
-              <PollIcon />
-              <span>Intervue Poll</span>
-            </div>
-          </div>
+      <div className="min-h-screen bg-white">
+        <div className="mx-auto max-w-[1100px] px-8 pt-14 pb-10 min-h-screen flex flex-col">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-full max-w-[820px]">
+              <div className="flex items-center gap-4 mb-6">
+                <h2 className="text-4xl font-bold text-black">Question 1</h2>
 
-          <div className="flex items-center gap-4 mb-6">
-            <h2 className="text-3xl font-bold text-black">Question 1</h2>
-            <div className="flex items-center gap-2 text-red-600">
-              <span className="text-xl">⏱️</span>
-              <span className="font-bold text-xl">
-                00:{remainingTime.toString().padStart(2, "0")}
-              </span>
-            </div>
-          </div>
+                <div
+                  className={`flex items-center gap-2 ${
+                    isUrgent ? "text-red-600" : "text-black"
+                  }`}
+                >
+                  <svg
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12 8V12L14.5 13.5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
 
-          <div className="bg-[#6E6E6E] text-white p-5 rounded-2xl mb-8 text-lg">
-            {currentPoll.question}
-          </div>
-
-          {error && (
-            <div className="bg-red-100 text-red-700 px-4 py-3 rounded-xl mb-4 text-center">
-              {error}
-            </div>
-          )}
-
-          <div className="space-y-4 mb-8">
-            {currentPoll.options.map((option, index) => (
-              <div
-                key={option}
-                onClick={() => dispatch(setSelectedOption(option))}
-                className={`flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all ${
-                  selectedOption === option
-                    ? "border-[#7765DA] bg-[#F2F2F2]"
-                    : "border-[#E0E0E0] hover:border-[#7765DA] bg-white"
-                }`}
-              >
-                <div className="flex items-center justify-center w-10 h-10 bg-[#7765DA] text-white rounded-full font-bold text-base flex-shrink-0">
-                  {index + 1}
+                  <span className="font-bold text-xl">
+                    00:{remainingTime.toString().padStart(2, "0")}
+                  </span>
                 </div>
-                <span className="font-semibold text-black text-base">
-                  {option}
-                </span>
               </div>
-            ))}
-          </div>
 
-          <div className="flex justify-center">
-            <button
-              onClick={handleVote}
-              disabled={!selectedOption}
-              style={{
-                background: selectedOption
-                  ? "linear-gradient(90deg, #7765DA 0%, #5767D0 50%, #4F0DCE 100%)"
-                  : "#D3D3D3",
-              }}
-              className={`px-12 py-4 rounded-full font-semibold text-white transition-all ${
-                selectedOption ? "hover:opacity-90" : "cursor-not-allowed"
-              }`}
-            >
-              Submit
-            </button>
+              <div
+                className="rounded-2xl overflow-hidden border-2"
+                style={{ borderColor: "#7765DA" }}
+              >
+                <div
+                  className="px-6 py-4 text-white text-lg font-semibold"
+                  style={{
+                    background:
+                      "linear-gradient(90deg, #373737 0%, #6E6E6E 100%)",
+                  }}
+                >
+                  {currentPoll.question}
+                </div>
+
+                <div className="bg-white p-6 space-y-4">
+                  {error && (
+                    <div className="bg-red-100 text-red-700 px-4 py-3 rounded-xl text-center">
+                      {error}
+                    </div>
+                  )}
+
+                  {currentPoll.options.map((option, index) => (
+                    <div
+                      key={option}
+                      onClick={() => dispatch(setSelectedOption(option))}
+                      className={`flex items-center gap-4 p-5 rounded-2xl border-2 cursor-pointer transition-all ${
+                        selectedOption === option
+                          ? "border-[#7765DA] bg-[#F2F2F2]"
+                          : "border-[#E6E6E6] bg-[#F2F2F2] hover:border-[#7765DA]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-center w-10 h-10 bg-[#7765DA] text-white rounded-full font-bold text-base flex-shrink-0">
+                        {index + 1}
+                      </div>
+                      <span className="font-semibold text-black text-base">
+                        {option}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-10">
+                <button
+                  onClick={handleVote}
+                  disabled={!selectedOption}
+                  style={{
+                    background: selectedOption
+                      ? "linear-gradient(90deg, #7765DA 0%, #5767D0 50%, #4F0DCE 100%)"
+                      : "#D3D3D3",
+                  }}
+                  className={`px-14 py-4 rounded-full font-semibold text-white text-base transition-all ${
+                    selectedOption ? "hover:opacity-90" : "cursor-not-allowed"
+                  }`}
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

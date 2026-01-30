@@ -14,7 +14,7 @@ const connectedStudents = new Map<string, { socketId: string; name: string }>();
 
 export function setupPollSocket(io: Server) {
   io.on("connection", (socket: Socket) => {
-    console.log("✅ User connected:", socket.id);
+    console.log("User connected:", socket.id);
 
     socket.on("teacher-ask-question", async (data: any) => {
       try {
@@ -88,7 +88,7 @@ export function setupPollSocket(io: Server) {
           option,
         });
 
-        console.log(`📊 ${student} voted for: ${option}`);
+        console.log(`${student} voted for: ${option}`);
       } catch (error: any) {
         console.error("Error handling vote:", error);
         socket.emit("error", { message: error.message });
@@ -224,7 +224,7 @@ export function setupPollSocket(io: Server) {
     });
 
     socket.on("disconnect", async () => {
-      console.log("❌ User disconnected:", socket.id);
+      console.log("User disconnected:", socket.id);
 
       connectedStudents.delete(socket.id);
       io.emit("students-updated", Array.from(connectedStudents.values()));
