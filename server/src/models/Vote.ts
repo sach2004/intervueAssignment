@@ -7,11 +7,6 @@ const VoteSchema = new Schema<IVote>({
     required: true,
     index: true,
   },
-  studentSocketId: {
-    type: String,
-    required: true,
-    index: true,
-  },
   studentName: {
     type: String,
     required: true,
@@ -27,6 +22,6 @@ const VoteSchema = new Schema<IVote>({
   },
 });
 
-VoteSchema.index({ pollId: 1, studentSocketId: 1 }, { unique: true });
+VoteSchema.index({ pollId: 1, studentName: 1 }, { unique: true });
 
 export const Vote = mongoose.model<IVote>("Vote", VoteSchema);

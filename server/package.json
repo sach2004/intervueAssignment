@@ -8,7 +8,8 @@
     "test:service": "tsx src/test-service.ts",
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
-    "test:recovery": "tsx src/test-recovery.ts"
+    "test:recovery": "tsx src/test-recovery.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",

@@ -1,5 +1,6 @@
 import { Server, Socket } from "socket.io";
-import * as pollService from "../services/pollService.js";
+import { PollSocketController } from "../controllers/PollSocketController.js";
+import { Student } from "../models/index.js";
 
 interface ChatMessage {
   id: string;
@@ -18,35 +19,22 @@ export function setupPollSocket(io: Server) {
 
     socket.on("teacher-ask-question", async (data: any) => {
       try {
-        const { question, options, timer } = data;
-
-        const poll = await pollService.createPoll(question, options, timer);
-
-        const pollData = {
-          _id: poll._id.toString(),
-          question: poll.question,
-          options: poll.options,
-          timer: poll.timer,
-          remainingTime: poll.getRemainingTime(),
-          status: poll.status,
-          results: Object.fromEntries(poll.results),
-        };
+        const pollData = await PollSocketController.handleAskQuestion(data);
 
         io.emit("new-question", pollData);
 
         setTimeout(async () => {
           try {
-            await pollService.completePoll(poll._id.toString());
-            const results = await pollService.calculateResults(
-              poll._id.toString(),
+            const results = await PollSocketController.completePollTimer(
+              pollData._id,
             );
 
             io.emit("polling-results", results);
-            io.emit("poll-completed", { pollId: poll._id.toString() });
+            io.emit("poll-completed", { pollId: pollData._id });
           } catch (error) {
             console.error("Error completing poll:", error);
           }
-        }, timer * 1000);
+        }, data.timer * 1000);
       } catch (error: any) {
         console.error("Error asking question:", error);
         socket.emit("error", { message: error.message });
@@ -56,39 +44,19 @@ export function setupPollSocket(io: Server) {
     socket.on("handle-polling", async (data: any) => {
       try {
         const { option } = data;
+        const studentName = (socket as any).studentName;
 
-        const poll = await pollService.getActivePoll();
+        const { currentResults, option: votedOption } =
+          await PollSocketController.handleSubmitVote(studentName, option);
 
-        if (!poll) {
-          socket.emit("error", { message: "No active poll" });
-          return;
-        }
-
-        const student = (socket as any).studentName;
-
-        if (!student) {
-          socket.emit("error", { message: "Please set your name first" });
-          return;
-        }
-
-        await pollService.submitVote(
-          poll._id.toString(),
-          socket.id,
-          student,
-          option,
-        );
-
-        const currentResults = await pollService.calculateLiveResults(
-          poll._id.toString(),
-        );
         io.emit("live-results-update", currentResults);
 
         socket.emit("vote-success", {
           message: "Vote submitted successfully",
-          option,
+          option: votedOption,
         });
 
-        console.log(`${student} voted for: ${option}`);
+        console.log(`${studentName} voted for: ${votedOption}`);
       } catch (error: any) {
         console.error("Error handling vote:", error);
         socket.emit("error", { message: error.message });
@@ -106,39 +74,22 @@ export function setupPollSocket(io: Server) {
 
         io.emit("students-updated", Array.from(connectedStudents.values()));
 
-        const Student = (await import("../models/index.js")).Student;
-
         await Student.findOneAndUpdate(
-          { socketId: socket.id },
+          { name },
           { socketId: socket.id, name, voted: false },
           { upsert: true, new: true },
         );
 
-        console.log(`📝 Student ${name} connected (${socket.id})`);
+        console.log(`Student ${name} connected (${socket.id})`);
 
-        const poll = await pollService.getActivePoll();
+        const { poll, hasVoted, votedOption } =
+          await PollSocketController.handleStudentConnect(name);
 
         if (poll) {
-          socket.emit("new-question", {
-            _id: poll._id.toString(),
-            question: poll.question,
-            options: poll.options,
-            timer: poll.timer,
-            remainingTime: poll.getRemainingTime(),
-            status: poll.status,
-            results: Object.fromEntries(poll.results),
-          });
+          socket.emit("new-question", poll);
 
-          const Vote = (await import("../models/index.js")).Vote;
-          const existingVote = await Vote.findOne({
-            pollId: poll._id.toString(),
-            studentSocketId: socket.id,
-          });
-
-          if (existingVote) {
-            socket.emit("already-voted", {
-              option: existingVote.selectedOption,
-            });
+          if (hasVoted) {
+            socket.emit("already-voted", { option: votedOption });
           }
         }
       } catch (error: any) {
@@ -163,7 +114,6 @@ export function setupPollSocket(io: Server) {
       io.emit("students-updated", Array.from(connectedStudents.values()));
 
       try {
-        const Student = (await import("../models/index.js")).Student;
         await Student.deleteOne({ socketId: data.socketId });
       } catch (error) {
         console.error("Error removing student:", error);
@@ -202,18 +152,20 @@ export function setupPollSocket(io: Server) {
 
     socket.on("request-current-state", async () => {
       try {
-        const poll = await pollService.getActivePoll();
+        const studentName = (socket as any).studentName;
+        if (!studentName) {
+          socket.emit("no-active-poll");
+          return;
+        }
+
+        const { poll, hasVoted, votedOption } =
+          await PollSocketController.handleStudentConnect(studentName);
 
         if (poll) {
-          socket.emit("new-question", {
-            _id: poll._id.toString(),
-            question: poll.question,
-            options: poll.options,
-            timer: poll.timer,
-            remainingTime: poll.getRemainingTime(),
-            status: poll.status,
-            results: Object.fromEntries(poll.results),
-          });
+          socket.emit("new-question", poll);
+          if (hasVoted) {
+            socket.emit("already-voted", { option: votedOption });
+          }
         } else {
           socket.emit("no-active-poll");
         }
@@ -230,7 +182,6 @@ export function setupPollSocket(io: Server) {
       io.emit("students-updated", Array.from(connectedStudents.values()));
 
       try {
-        const Student = (await import("../models/index.js")).Student;
         await Student.deleteOne({ socketId: socket.id });
       } catch (error) {
         console.error("Error removing student:", error);

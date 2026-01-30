@@ -1,12 +1,12 @@
 import axios from "axios";
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { io, Socket } from "socket.io-client";
+import { useSocket } from "../hooks/useSocket";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { resetPoll, setPoll, updateResults } from "../store/pollSlice";
 import ChatPopup from "./ChatPopup";
 
-const SERVER_URL = "http://localhost:3001";
+const SERVER_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 const COLORS = {
   p1: "#7765DA",
@@ -155,7 +155,8 @@ export default function Teacher() {
   const dispatch = useAppDispatch();
   const currentPoll = useAppSelector((state) => state.poll.currentPoll);
 
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const socket = useSocket();
+
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", ""]);
   const [correctOption, setCorrectOption] = useState<number | null>(null);
@@ -166,22 +167,21 @@ export default function Teacher() {
   const [chatOpen, setChatOpen] = useState(false);
 
   useEffect(() => {
-    const newSocket = io(SERVER_URL);
-    setSocket(newSocket);
+    if (!socket) return;
 
-    newSocket.emit("teacher-joined");
+    socket.emit("teacher-joined");
 
-    newSocket.on("new-question", (poll: any) => {
+    socket.on("new-question", (poll: any) => {
       dispatch(setPoll(poll));
       setShowResults(true);
       setLiveResults({});
     });
 
-    newSocket.on("polling-results", (results: any) => {
+    socket.on("polling-results", (results: any) => {
       dispatch(updateResults(results));
     });
 
-    newSocket.on("live-results-update", (results: any) => {
+    socket.on("live-results-update", (results: any) => {
       setLiveResults(results);
     });
 
@@ -193,9 +193,11 @@ export default function Teacher() {
     });
 
     return () => {
-      newSocket.close();
+      socket.off("new-question");
+      socket.off("polling-results");
+      socket.off("live-results-update");
     };
-  }, [dispatch]);
+  }, [socket, dispatch]);
 
   const addOption = () => {
     if (options.length < 4) setOptions([...options, ""]);

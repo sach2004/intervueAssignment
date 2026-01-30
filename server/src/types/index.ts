@@ -14,7 +14,6 @@ export interface IPoll extends Document {
 
 export interface IVote extends Document {
   pollId: string;
-  studentSocketId: string;
   studentName: string;
   selectedOption: string;
   votedAt: Date;

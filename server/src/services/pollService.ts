@@ -46,7 +46,6 @@ export async function getActivePoll() {
 
 export async function submitVote(
   pollId: string,
-  studentSocketId: string,
   studentName: string,
   selectedOption: string,
 ) {
@@ -67,31 +66,29 @@ export async function submitVote(
       throw new Error("Poll has expired");
     }
 
-    const existingVote = await Vote.findOne({
-      pollId,
-      studentSocketId,
-    });
+    try {
+      const vote = new Vote({
+        pollId,
+        studentName,
+        selectedOption,
+      });
 
-    if (existingVote) {
-      throw new Error("Already voted");
+      await vote.save();
+
+      await Student.updateOne({ name: studentName }, { voted: true });
+
+      return vote;
+    } catch (error: any) {
+      if (error.code === 11000) {
+        throw new Error("You have already voted");
+      }
+      throw error;
     }
-
-    const vote = new Vote({
-      pollId,
-      studentSocketId,
-      studentName,
-      selectedOption,
-    });
-
-    await vote.save();
-
-    await Student.updateOne({ socketId: studentSocketId }, { voted: true });
-
-    return vote;
   } catch (error) {
     throw error;
   }
 }
+
 export async function calculateLiveResults(pollId: string) {
   try {
     const poll = await Poll.findById(pollId);
@@ -196,5 +193,14 @@ export async function getPollHistory() {
     return polls;
   } catch (error: any) {
     throw new Error(`Failed to get poll history: ${error.message}`);
+  }
+}
+
+export async function checkIfVoted(pollId: string, studentName: string) {
+  try {
+    const vote = await Vote.findOne({ pollId, studentName });
+    return vote;
+  } catch (error: any) {
+    throw new Error(`Failed to check vote: ${error.message}`);
   }
 }

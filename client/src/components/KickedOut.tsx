@@ -15,6 +15,10 @@ const PollIcon = () => (
   </svg>
 );
 
+const gradientStyle = {
+  background: "linear-gradient(90deg, #7765DA 0%, #5767D0 50%, #4F0DCE 100%)",
+} as const;
+
 export default function KickedOut() {
   const navigate = useNavigate();
 
@@ -27,7 +31,10 @@ export default function KickedOut() {
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <div className="max-w-2xl w-full text-center">
         <div className="flex items-center justify-center mb-8">
-          <div className="bg-[#7765DA] text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2">
+          <div
+            style={gradientStyle}
+            className=" text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2"
+          >
             <PollIcon />
             <span>Intervue Poll</span>
           </div>

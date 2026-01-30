@@ -12,13 +12,19 @@ import { setupPollSocket } from "./socket/pollSocket.js";
 const app = express();
 const httpServer = createServer(app);
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+    credentials: true,
+  }),
+);
 app.use(express.json());
 
 const io = new Server(httpServer, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
@@ -71,12 +77,10 @@ app.get("/api/poll/history", async (req, res) => {
   }
 });
 
-app.get("/api/vote/check/:pollId/:socketId", async (req, res) => {
+app.get("/api/vote/check/:pollId/:studentName", async (req, res) => {
   try {
-    const { pollId, socketId } = req.params;
-    const Vote = (await import("./models/index.js")).Vote;
-
-    const vote = await Vote.findOne({ pollId, studentSocketId: socketId });
+    const { pollId, studentName } = req.params;
+    const vote = await pollService.checkIfVoted(pollId, studentName);
 
     res.json({
       hasVoted: !!vote,
@@ -103,10 +107,6 @@ async function startServer() {
     httpServer.listen(PORT, () => {
       console.log(`\nServer running on http://localhost:${PORT}`);
       console.log(`Socket.io ready`);
-      console.log(`State recovery endpoints:`);
-      console.log(`   GET /api/poll/active`);
-      console.log(`   GET /api/poll/history`);
-      console.log(`   GET /api/vote/check/:pollId/:socketId`);
     });
   } catch (error) {
     console.error("Failed to start server:", error);

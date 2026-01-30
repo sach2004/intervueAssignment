@@ -14,6 +14,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   isTeacher?: boolean;
+  currentStudentName?: string;
 }
 
 export default function ChatPopup({
@@ -21,6 +22,7 @@ export default function ChatPopup({
   isOpen,
   onClose,
   isTeacher = false,
+  currentStudentName = "",
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -91,7 +93,7 @@ export default function ChatPopup({
             {messages.map((msg) => {
               const isOwnMessage = isTeacher
                 ? msg.isTeacher
-                : msg.sender === (socket as any)?.studentName;
+                : msg.sender === currentStudentName;
 
               return (
                 <div

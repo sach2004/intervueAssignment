@@ -1,10 +1,10 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { io, Socket } from "socket.io-client";
+import { usePollTimer } from "../hooks/usePollTimer";
+import { useSocket } from "../hooks/useSocket";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import {
-  decrementTimer,
   setHasVoted,
   setPoll,
   setSelectedOption,
@@ -12,7 +12,7 @@ import {
 } from "../store/pollSlice";
 import ChatPopup from "./ChatPopup";
 
-const SERVER_URL = "http://localhost:3001";
+const SERVER_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 const ChatIcon = () => (
   <svg
@@ -47,14 +47,16 @@ const PollIcon = () => (
 export default function Student() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
-  const { currentPoll, remainingTime, hasVoted, selectedOption } =
-    useAppSelector((state) => state.poll);
+  const { currentPoll, hasVoted, selectedOption } = useAppSelector(
+    (state) => state.poll,
+  );
 
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const socket = useSocket();
+  const remainingTime = usePollTimer();
+
   const [name, setName] = useState("");
   const [hasSetName, setHasSetName] = useState(false);
   const [error, setError] = useState("");
-  const [voteSubmitted, setVoteSubmitted] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
 
   const isUrgent = remainingTime <= 15;
@@ -68,38 +70,36 @@ export default function Student() {
   }, []);
 
   const connectWithName = (studentName: string) => {
-    const newSocket = io(SERVER_URL);
-    setSocket(newSocket);
+    if (!socket) return;
 
-    newSocket.emit("student-set-name", { name: studentName });
+    socket.emit("student-set-name", { name: studentName });
 
-    newSocket.on("new-question", (poll: any) => {
+    socket.on("new-question", (poll: any) => {
       dispatch(setPoll(poll));
-      setVoteSubmitted(false);
     });
 
-    newSocket.on("polling-results", (results: any) => {
+    socket.on("polling-results", (results: any) => {
       dispatch(updateResults(results));
       dispatch(setHasVoted(true));
     });
 
-    newSocket.on("already-voted", (data: any) => {
+    socket.on("already-voted", (data: any) => {
       dispatch(setSelectedOption(data.option));
-      setVoteSubmitted(true);
+      dispatch(setHasVoted(true));
     });
 
-    newSocket.on("vote-success", () => {
-      setVoteSubmitted(true);
+    socket.on("vote-success", () => {
+      dispatch(setHasVoted(true));
     });
 
-    newSocket.on("error", (data: any) => {
+    socket.on("error", (data: any) => {
       setError(data.message);
       setTimeout(() => setError(""), 3000);
     });
 
-    newSocket.on("kicked-out", () => {
+    socket.on("kicked-out", () => {
       sessionStorage.removeItem("studentName");
-      newSocket.close();
+      socket.close();
       navigate("/kicked-out");
     });
 
@@ -115,6 +115,12 @@ export default function Student() {
     setHasSetName(true);
   };
 
+  useEffect(() => {
+    if (socket && name) {
+      connectWithName(name);
+    }
+  }, [socket]);
+
   const handleSetName = () => {
     if (!name.trim()) {
       setError("Please enter your name");
@@ -128,16 +134,6 @@ export default function Student() {
     if (!socket || !selectedOption) return;
     socket.emit("handle-polling", { option: selectedOption });
   };
-
-  useEffect(() => {
-    if (!currentPoll || hasVoted || remainingTime <= 0) return;
-
-    const interval = setInterval(() => {
-      dispatch(decrementTimer());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [currentPoll, hasVoted, remainingTime, dispatch]);
 
   if (!hasSetName) {
     return (
@@ -235,6 +231,7 @@ export default function Student() {
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}
           isTeacher={false}
+          currentStudentName={name}
         />
       </>
     );
@@ -366,6 +363,7 @@ export default function Student() {
           isOpen={chatOpen}
           onClose={() => setChatOpen(false)}
           isTeacher={false}
+          currentStudentName={name}
         />
       </>
     );
@@ -479,13 +477,10 @@ export default function Student() {
 
       <button
         onClick={() => setChatOpen(!chatOpen)}
-        style={{
-          background:
-            "linear-gradient(90deg, #7765DA 0%, #5767D0 50%, #4F0DCE 100%)",
-        }}
-        className="fixed bottom-8 right-8 w-16 h-16 text-white rounded-full shadow-2xl flex items-center justify-center text-2xl z-40 hover:opacity-90 transition-all"
+        style={{ background: "#5767D0" }}
+        className="fixed bottom-8 right-8 w-16 h-16 text-white rounded-full shadow-2xl flex items-center justify-center z-40 hover:opacity-90 transition-all"
       >
-        💬
+        <ChatIcon />
       </button>
 
       <ChatPopup
@@ -493,6 +488,7 @@ export default function Student() {
         isOpen={chatOpen}
         onClose={() => setChatOpen(false)}
         isTeacher={false}
+        currentStudentName={name}
       />
     </>
   );
