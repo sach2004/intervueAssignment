@@ -16,7 +16,7 @@ export async function createPoll(
 
     await poll.save();
 
-    await Student.updateMany({}, { voted: false }); // ✅ Fixed: was "false" as string
+    await Student.updateMany({}, { voted: false });
 
     return poll;
   } catch (error: any) {
@@ -44,7 +44,6 @@ export async function getActivePoll() {
   }
 }
 
-// ✅ FIXED: Added function name "submitVote"
 export async function submitVote(
   pollId: string,
   studentSocketId: string,
@@ -84,13 +83,50 @@ export async function submitVote(
       selectedOption,
     });
 
-    await vote.save(); // ✅ Fixed: was poll.save (wrong!)
+    await vote.save();
 
     await Student.updateOne({ socketId: studentSocketId }, { voted: true });
 
     return vote;
   } catch (error) {
     throw error;
+  }
+}
+export async function calculateLiveResults(pollId: string) {
+  try {
+    const poll = await Poll.findById(pollId);
+
+    if (!poll) {
+      throw new Error("Poll not found");
+    }
+
+    const votes = await Vote.find({ pollId });
+    const totalVotes = votes.length;
+
+    const voteCounts: any = {};
+    poll.options.forEach((option: string) => {
+      voteCounts[option] = 0;
+    });
+
+    votes.forEach((vote) => {
+      if (voteCounts[vote.selectedOption] !== undefined) {
+        voteCounts[vote.selectedOption]++;
+      }
+    });
+
+    const results: any = {};
+    poll.options.forEach((option: string) => {
+      const count = voteCounts[option] || 0;
+      const percentage = totalVotes > 0 ? (count / totalVotes) * 100 : 0;
+      results[option] = {
+        count,
+        percentage: Math.round(percentage * 10) / 10,
+      };
+    });
+
+    return results;
+  } catch (error: any) {
+    throw new Error(`Failed to calculate live results: ${error.message}`);
   }
 }
 
@@ -142,7 +178,7 @@ export async function completePoll(pollId: string) {
 
     await calculateResults(pollId);
 
-    poll.status = "completed"; // ✅ Added: mark as completed
+    poll.status = "completed";
     await poll.save();
 
     return poll;

@@ -1,9 +1,20 @@
 import { Server, Socket } from "socket.io";
 import * as pollService from "../services/pollService.js";
 
+interface ChatMessage {
+  id: string;
+  sender: string;
+  message: string;
+  timestamp: Date;
+  isTeacher: boolean;
+}
+
+const chatMessages: ChatMessage[] = [];
+const connectedStudents = new Map<string, { socketId: string; name: string }>();
+
 export function setupPollSocket(io: Server) {
   io.on("connection", (socket: Socket) => {
-    console.log("User connected:", socket.id);
+    console.log("✅ User connected:", socket.id);
 
     socket.on("teacher-ask-question", async (data: any) => {
       try {
@@ -29,6 +40,7 @@ export function setupPollSocket(io: Server) {
             const results = await pollService.calculateResults(
               poll._id.toString(),
             );
+
             io.emit("polling-results", results);
             io.emit("poll-completed", { pollId: poll._id.toString() });
           } catch (error) {
@@ -66,14 +78,17 @@ export function setupPollSocket(io: Server) {
           option,
         );
 
-        const results = await pollService.calculateResults(poll._id.toString());
-
-        io.emit("polling-results", results);
+        const currentResults = await pollService.calculateLiveResults(
+          poll._id.toString(),
+        );
+        io.emit("live-results-update", currentResults);
 
         socket.emit("vote-success", {
-          message: "Vote submitted",
+          message: "Vote submitted successfully",
           option,
         });
+
+        console.log(`📊 ${student} voted for: ${option}`);
       } catch (error: any) {
         console.error("Error handling vote:", error);
         socket.emit("error", { message: error.message });
@@ -85,6 +100,11 @@ export function setupPollSocket(io: Server) {
         const { name } = data;
 
         (socket as any).studentName = name;
+        (socket as any).isTeacher = false;
+
+        connectedStudents.set(socket.id, { socketId: socket.id, name });
+
+        io.emit("students-updated", Array.from(connectedStudents.values()));
 
         const Student = (await import("../models/index.js")).Student;
 
@@ -94,7 +114,7 @@ export function setupPollSocket(io: Server) {
           { upsert: true, new: true },
         );
 
-        console.log(`📝 Student ${name} set (${socket.id})`);
+        console.log(`📝 Student ${name} connected (${socket.id})`);
 
         const poll = await pollService.getActivePoll();
 
@@ -127,6 +147,59 @@ export function setupPollSocket(io: Server) {
       }
     });
 
+    socket.on("teacher-joined", () => {
+      (socket as any).isTeacher = true;
+      socket.emit("students-updated", Array.from(connectedStudents.values()));
+    });
+
+    socket.on("kick-student", async (data: { socketId: string }) => {
+      const studentSocket = io.sockets.sockets.get(data.socketId);
+      if (studentSocket) {
+        studentSocket.emit("kicked-out");
+        studentSocket.disconnect(true);
+      }
+
+      connectedStudents.delete(data.socketId);
+      io.emit("students-updated", Array.from(connectedStudents.values()));
+
+      try {
+        const Student = (await import("../models/index.js")).Student;
+        await Student.deleteOne({ socketId: data.socketId });
+      } catch (error) {
+        console.error("Error removing student:", error);
+      }
+    });
+
+    socket.on("send-chat-message", (data: { message: string }) => {
+      const isTeacher = (socket as any).isTeacher || false;
+      const senderName = isTeacher
+        ? "Teacher"
+        : (socket as any).studentName || "Anonymous";
+
+      const chatMessage: ChatMessage = {
+        id: Date.now().toString() + Math.random(),
+        sender: senderName,
+        message: data.message,
+        timestamp: new Date(),
+        isTeacher,
+      };
+
+      chatMessages.push(chatMessage);
+      if (chatMessages.length > 100) {
+        chatMessages.shift();
+      }
+
+      io.emit("chat-message", chatMessage);
+    });
+
+    socket.on("get-chat-history", () => {
+      socket.emit("chat-history", chatMessages);
+    });
+
+    socket.on("get-students-list", () => {
+      socket.emit("students-updated", Array.from(connectedStudents.values()));
+    });
+
     socket.on("request-current-state", async () => {
       try {
         const poll = await pollService.getActivePoll();
@@ -151,7 +224,10 @@ export function setupPollSocket(io: Server) {
     });
 
     socket.on("disconnect", async () => {
-      console.log("User disconnected:", socket.id);
+      console.log("❌ User disconnected:", socket.id);
+
+      connectedStudents.delete(socket.id);
+      io.emit("students-updated", Array.from(connectedStudents.values()));
 
       try {
         const Student = (await import("../models/index.js")).Student;
