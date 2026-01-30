@@ -185,12 +185,18 @@ export default function Teacher() {
       setLiveResults(results);
     });
 
-    axios.get(`${SERVER_URL}/api/poll/active`).then((res) => {
-      if (res.data.poll) {
-        dispatch(setPoll(res.data.poll));
-        setShowResults(true);
-      }
-    });
+    axios
+      .get(`${SERVER_URL}/api/poll/active`)
+      .then((res) => {
+        console.log("Active poll response:", res.data);
+        if (res.data.poll) {
+          dispatch(setPoll(res.data.poll));
+          setShowResults(true);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch active poll:", err);
+      });
 
     return () => {
       socket.off("new-question");
