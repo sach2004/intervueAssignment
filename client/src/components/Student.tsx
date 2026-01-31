@@ -58,6 +58,8 @@ export default function Student() {
   const [hasSetName, setHasSetName] = useState(false);
   const [error, setError] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const isUrgent = remainingTime <= 15;
 
@@ -72,28 +74,37 @@ export default function Student() {
   const connectWithName = (studentName: string) => {
     if (!socket) return;
 
+    setLoading(true);
+
     socket.emit("student-set-name", { name: studentName });
 
     socket.on("new-question", (poll: any) => {
       dispatch(setPoll(poll));
+      setLoading(false);
     });
 
     socket.on("polling-results", (results: any) => {
       dispatch(updateResults(results));
       dispatch(setHasVoted(true));
+      setSubmitting(false);
+      setLoading(false);
     });
 
     socket.on("already-voted", (data: any) => {
       dispatch(setSelectedOption(data.option));
       dispatch(setHasVoted(true));
+      setLoading(false);
     });
 
     socket.on("vote-success", () => {
       dispatch(setHasVoted(true));
+      setSubmitting(false);
     });
 
     socket.on("error", (data: any) => {
       setError(data.message);
+      setSubmitting(false);
+      setLoading(false);
       setTimeout(() => setError(""), 3000);
     });
 
@@ -109,8 +120,12 @@ export default function Student() {
         if (res.data.poll) {
           dispatch(setPoll(res.data.poll));
         }
+        setLoading(false);
       })
-      .catch((err) => console.error("Error:", err));
+      .catch((err) => {
+        console.error("Error:", err);
+        setLoading(false);
+      });
 
     setHasSetName(true);
   };
@@ -132,6 +147,7 @@ export default function Student() {
 
   const handleVote = () => {
     if (!socket || !selectedOption) return;
+    setSubmitting(true);
     socket.emit("handle-polling", { option: selectedOption });
   };
 
@@ -188,6 +204,27 @@ export default function Student() {
               Continue
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full text-center">
+          <div className="flex items-center justify-center mb-8">
+            <div className="bg-[#7765DA] text-white px-5 py-2 rounded-full text-sm font-semibold flex items-center gap-2">
+              <PollIcon />
+              <span>Intervue Poll</span>
+            </div>
+          </div>
+
+          <div className="mb-8">
+            <div className="w-20 h-20 border-8 border-[#7765DA] border-t-transparent rounded-full animate-spin mx-auto"></div>
+          </div>
+
+          <h2 className="text-3xl font-bold text-black">Loading...</h2>
         </div>
       </div>
     );
@@ -457,17 +494,20 @@ export default function Student() {
               <div className="flex justify-end mt-10">
                 <button
                   onClick={handleVote}
-                  disabled={!selectedOption}
+                  disabled={!selectedOption || submitting}
                   style={{
-                    background: selectedOption
-                      ? "linear-gradient(90deg, #7765DA 0%, #5767D0 50%, #4F0DCE 100%)"
-                      : "#D3D3D3",
+                    background:
+                      selectedOption && !submitting
+                        ? "linear-gradient(90deg, #7765DA 0%, #5767D0 50%, #4F0DCE 100%)"
+                        : "#D3D3D3",
                   }}
                   className={`px-14 py-4 rounded-full font-semibold text-white text-base transition-all ${
-                    selectedOption ? "hover:opacity-90" : "cursor-not-allowed"
+                    selectedOption && !submitting
+                      ? "hover:opacity-90"
+                      : "cursor-not-allowed"
                   }`}
                 >
-                  Submit
+                  {submitting ? "Submitting..." : "Submit"}
                 </button>
               </div>
             </div>

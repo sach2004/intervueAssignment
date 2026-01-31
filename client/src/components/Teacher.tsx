@@ -165,6 +165,8 @@ export default function Teacher() {
   const [showResults, setShowResults] = useState(false);
   const [liveResults, setLiveResults] = useState<any>({});
   const [chatOpen, setChatOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [askingQuestion, setAskingQuestion] = useState(false);
 
   useEffect(() => {
     if (!socket) return;
@@ -175,6 +177,7 @@ export default function Teacher() {
       dispatch(setPoll(poll));
       setShowResults(true);
       setLiveResults({});
+      setAskingQuestion(false);
     });
 
     socket.on("polling-results", (results: any) => {
@@ -188,14 +191,15 @@ export default function Teacher() {
     axios
       .get(`${SERVER_URL}/api/poll/active`)
       .then((res) => {
-        console.log("Active poll response:", res.data);
         if (res.data.poll) {
           dispatch(setPoll(res.data.poll));
           setShowResults(true);
         }
+        setLoading(false);
       })
       .catch((err) => {
         console.error("Failed to fetch active poll:", err);
+        setLoading(false);
       });
 
     return () => {
@@ -227,6 +231,8 @@ export default function Teacher() {
       return;
     }
 
+    setAskingQuestion(true);
+
     socket.emit("teacher-ask-question", {
       question: question.trim(),
       options: validOptions,
@@ -251,6 +257,17 @@ export default function Teacher() {
       return { option: opt, percentage: Number(r.percentage || 0) };
     });
   }, [currentPoll, liveResults]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="w-20 h-20 border-8 border-[#7765DA] border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+          <h2 className="text-3xl font-bold text-black">Loading...</h2>
+        </div>
+      </div>
+    );
+  }
 
   if (showResults && currentPoll) {
     return (
@@ -475,9 +492,10 @@ export default function Teacher() {
         <div className="w-full flex justify-end">
           <GradientButton
             onClick={askQuestion}
+            disabled={askingQuestion}
             className="px-12 py-3.5 text-base"
           >
-            Ask Question
+            {askingQuestion ? "Asking..." : "Ask Question"}
           </GradientButton>
         </div>
       </div>
