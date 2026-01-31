@@ -312,7 +312,9 @@ export default function Student() {
                         strokeLinejoin="round"
                       />
                     </svg>
-                    <span className="font-bold text-xl">00:00</span>
+                    <span className="font-bold text-xl">
+                      00:{remainingTime.toString().padStart(2, "0")}
+                    </span>
                   </div>
                 </div>
 

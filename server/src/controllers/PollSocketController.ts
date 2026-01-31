@@ -13,6 +13,7 @@ export class PollSocketController {
       remainingTime: poll.getRemainingTime(),
       status: poll.status,
       results: Object.fromEntries(poll.results),
+      expiresAt: poll.expiresAt.toISOString(),
     };
   }
 
@@ -57,6 +58,7 @@ export class PollSocketController {
         remainingTime: poll.getRemainingTime(),
         status: poll.status,
         results: Object.fromEntries(poll.results),
+        expiresAt: poll.expiresAt.toISOString(),
       },
       hasVoted: !!existingVote,
       votedOption: existingVote?.selectedOption,

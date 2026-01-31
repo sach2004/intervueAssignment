@@ -6,6 +6,7 @@ export interface Poll {
   remainingTime: number;
   status: "active" | "completed";
   results: { [key: string]: number };
+  expiresAt?: string;
 }
 
 export interface QuestionData {

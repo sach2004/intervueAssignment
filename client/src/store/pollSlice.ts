@@ -40,6 +40,9 @@ const pollSlice = createSlice({
     setHasVoted: (state, action: PayloadAction<boolean>) => {
       state.hasVoted = action.payload;
     },
+    setRemainingTime: (state, action: PayloadAction<number>) => {
+      state.remainingTime = action.payload;
+    },
     decrementTimer: (state) => {
       if (state.remainingTime > 0) {
         state.remainingTime -= 1;
@@ -59,6 +62,7 @@ export const {
   updateResults,
   setSelectedOption,
   setHasVoted,
+  setRemainingTime,
   decrementTimer,
   resetPoll,
 } = pollSlice.actions;

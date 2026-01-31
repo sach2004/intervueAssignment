@@ -1,22 +1,29 @@
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { decrementTimer } from "../store/pollSlice";
+import { setRemainingTime } from "../store/pollSlice";
 
 export function usePollTimer() {
   const dispatch = useAppDispatch();
-  const { currentPoll, remainingTime, hasVoted } = useAppSelector(
-    (state) => state.poll,
-  );
+  const { currentPoll } = useAppSelector((state) => state.poll);
 
   useEffect(() => {
-    if (!currentPoll || hasVoted || remainingTime <= 0) return;
+    if (!currentPoll) return;
 
-    const interval = setInterval(() => {
-      dispatch(decrementTimer());
-    }, 1000);
+    const calculateRemaining = () => {
+      if (currentPoll.expiresAt) {
+        const now = Date.now();
+        const expiresAt = new Date(currentPoll.expiresAt).getTime();
+        const remaining = Math.max(0, Math.floor((expiresAt - now) / 1000));
+        dispatch(setRemainingTime(remaining));
+      }
+    };
+
+    calculateRemaining();
+
+    const interval = setInterval(calculateRemaining, 1000);
 
     return () => clearInterval(interval);
-  }, [currentPoll, hasVoted, remainingTime, dispatch]);
+  }, [currentPoll, dispatch]);
 
-  return remainingTime;
+  return useAppSelector((state) => state.poll.remainingTime);
 }
